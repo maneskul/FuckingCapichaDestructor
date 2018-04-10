@@ -23,10 +23,12 @@
         public Bitmap RemoveNoises()
         {
             while (
-                this.RemoveNonBlacks() |
+                //this.RemoveNonBlacks() |
+                this.KeepClosetsTo(Color.Black, 33) |
+                this.PaintClosetsTo(Color.Black, Color.Black, 33) ||
                 this.RemoveAloneGroups() |
-                this.RemoveWeakLines() |
-                this.RemoveWeakPixosInDiagonal() |
+                this.RemoveWeakLines() /*|
+                this.RemoveWeakPixosInDiagonal() */|
                 this.RemoveTwoHorizontalSequentialPixelsAlone() |
                 this.RemoveTwoVerticalSequentialPixelsAlone()) ;
 
@@ -46,6 +48,43 @@
                 anyChange = true;
                 noBlack.Color = Color.White;
                 this.OutputBitmap.SetPixel(noBlack.X, noBlack.Y, Color.White);
+            }
+
+            return anyChange;
+        }
+
+        private bool KeepClosetsTo(Color color, int threshold)
+        {
+            var nonClosest = this.Pixos
+                .Where(NotWhite)
+                .Where(pixo => !IsCloseTo(color, pixo.Color, threshold));
+
+            var anyChange = false;
+
+            foreach (var noBlack in nonClosest)
+            {
+                anyChange = true;
+                noBlack.Color = Color.White;
+                this.OutputBitmap.SetPixel(noBlack.X, noBlack.Y, Color.White);
+            }
+
+            return anyChange;
+        }
+
+        private bool PaintClosetsTo(Color example, Color targetColor, int threshold)
+        {
+            var closest = this.Pixos
+                .Where(NotWhite)
+                .Where(pixo => pixo.Color != Color.Black)
+                .Where(pixo => IsCloseTo(example, pixo.Color, 33));
+
+            var anyChange = false;
+
+            foreach (var pixo in closest)
+            {
+                anyChange = true;
+                pixo.Color = targetColor;
+                this.OutputBitmap.SetPixel(pixo.X, pixo.Y, targetColor);
             }
 
             return anyChange;
@@ -119,7 +158,7 @@
 
                 weakLine.PixoA.Color = Color.White;
                 this.OutputBitmap.SetPixel(weakLine.PixoA.X, weakLine.PixoA.Y, Color.White);
-                
+
                 weakLine.PixoB.Color = Color.White;
                 this.OutputBitmap.SetPixel(weakLine.PixoB.X, weakLine.PixoB.Y, Color.White);
             }
@@ -187,9 +226,18 @@
             return anyChange;
         }
 
-        private bool NotWhite(Pixo pixo) => pixo.Color.R != 255 && pixo.Color.G != 255 && pixo.Color.B != 255;
+        private bool NotWhite(Pixo pixo) => !IsWhite(pixo);
 
         private bool IsWhite(Pixo pixo) => pixo.Color.R == 255 && pixo.Color.G == 255 && pixo.Color.B == 255;
+
+        private bool IsCloseTo(Color example, Color color, int threshold)
+        {
+            int r = example.R - color.R,
+                g = example.G - color.G,
+                b = example.B - color.B;
+
+            return (r * r + g * g + b * b) <= threshold * threshold;
+        }
     }
 
     public class PixoCollection : List<Pixo>

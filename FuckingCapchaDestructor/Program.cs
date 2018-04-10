@@ -19,7 +19,15 @@
         {
             using (var bitmap = new Bitmap(filePath))
             using (var captchaWithoutNoises = new NoiseRemover(bitmap).RemoveNoises())
+            {
+                bitmap.Dispose();
+
+                var filename = string.Concat(Path.GetFileNameWithoutExtension(filePath), "_result", Path.GetExtension(filePath));
+                var path = Path.Combine(Path.GetDirectoryName(filePath), filename);
+                captchaWithoutNoises.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
+
                 return new ImageToText(captchaWithoutNoises).Resolve();
+            }
         }
     }
 }
