@@ -25,7 +25,7 @@
             while (
                 //this.RemoveNonBlacks() |
                 this.KeepClosetsTo(Color.Black, 33) |
-                this.PaintClosetsTo(Color.Black, Color.Black, 33) ||
+                this.PaintClosetsTo(Color.Black, Color.Black, 33) |
                 this.RemoveAloneGroups() |
                 this.RemoveWeakLines() /*|
                 this.RemoveWeakPixosInDiagonal() */|
