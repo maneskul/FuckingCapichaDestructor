@@ -23,14 +23,18 @@
         public Bitmap RemoveNoises()
         {
             while (
-                //this.RemoveNonBlacks() |
                 this.KeepClosetsTo(Color.Black, 33) |
                 this.PaintClosetsTo(Color.Black, Color.Black, 33) |
+                this.PaintClosetsTo(Color.Gray, Color.White, 150) |
                 this.RemoveAloneGroups() |
-                this.RemoveWeakLines() /*|
-                this.RemoveWeakPixosInDiagonal() */|
-                this.RemoveTwoHorizontalSequentialPixelsAlone() |
-                this.RemoveTwoVerticalSequentialPixelsAlone()) ;
+                this.RemoveWeakLines() |
+                this.RemoveAloneLines()) ;
+
+            /*
+             * 
+             * this.RemoveWeakPixosInDiagonal()
+             * this.RemoveTwoVerticalSequentialPixelsAlone()
+             */
 
             return this.OutputBitmap;
         }
@@ -166,31 +170,34 @@
             return anyChange;
         }
 
-        private bool RemoveTwoHorizontalSequentialPixelsAlone()
+        private bool RemoveAloneLines()
         {
             var anyChange = false;
 
             var items = this.Pixos
-                .Where(d => !this.IsWhite(d))
-                .Select(d => new { Pixo = d, Siblings = d.GetSiblings() })
-                .Where(d => d.Siblings.Where(sibling => sibling.X == d.Pixo.X).All(this.IsWhite))
-                .Select(d => new
+                .Where(d => !this.IsWhite(d) && d.GetSiblings(sibling => d.X == sibling.X && (sibling.Y == d.Y - 1 || sibling.Y == sibling.Y + 1)).All(sibling => IsWhite(sibling)))
+                .Select(d =>
                 {
-                    Pixo = d.Pixo,
-                    NextPixo = d.Siblings.FirstOrDefault(sibling => this.NotWhite(sibling) && d.Pixo.X + 1 == sibling.X && d.Pixo.Y == sibling.Y),
+                    var pixels = d.GroupWhen(pixo =>
+                        {
+                            var siblings = pixo.GetSiblings(sibling => !sibling.Readed && pixo.X == sibling.X && Math.Abs(sibling.Y - pixo.Y) == 1);
+                            var result = !d.Readed && d.Y == pixo.Y && NotWhite(pixo) && siblings.Any() && siblings.All(sibling => IsWhite(sibling));
+                            return result;
+                        });
+
+                    foreach (var pixo in pixels) pixo.MarkAsUnread();
+
+                    return pixels;
                 })
-                .Where(d => d.NextPixo != null)
-                .Where(d => d.NextPixo.GetSiblings().Where(sibling => sibling.X == d.NextPixo.X).All(this.IsWhite));
+                .Where(d => d.Count() > 500)
+                .SelectMany(d => d);
 
             foreach (var item in items)
             {
                 anyChange = true;
 
-                item.Pixo.Color = Color.White;
-                this.OutputBitmap.SetPixel(item.Pixo.X, item.Pixo.Y, Color.White);
-
-                item.NextPixo.Color = Color.White;
-                this.OutputBitmap.SetPixel(item.NextPixo.X, item.NextPixo.Y, Color.White);
+                item.Color = Color.White;
+                this.OutputBitmap.SetPixel(item.X, item.Y, Color.White);
             }
 
             return anyChange;
@@ -295,7 +302,7 @@
 
                 if (filter(item))
                 {
-                    foreach (var sibling in item.GetSiblings())
+                    foreach (var sibling in item.GetSiblings().Where(filter))
                         stack.Push(sibling);
 
                     yield return item;

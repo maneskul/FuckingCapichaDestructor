@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Drawing;
+    using System.Drawing.Imaging;
     using System.IO;
     using System.Linq;
     using OpenCvSharp;
@@ -12,6 +13,15 @@
     {
         public static string _currentFile { get; set; }
         
+        const string inputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas";
+        const string outputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas_Output";
+        const string inputDirSearchPattern = "00VQ3.jpg";
+
+        static Program()
+        {
+            if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
+        }
+
         public static void Main(string[] args)
         {
             //var files = Directory.GetFiles(@"c:\Temp\Captchas\Bests\", "*.jpg");
@@ -34,7 +44,7 @@
             }
         }
 
-        private static string Resolve(string filePath)
+        private static string RemoveNoises(string filePath)
         {
             using (var bitmap = new Bitmap(filePath))
             {
