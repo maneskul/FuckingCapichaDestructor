@@ -14,7 +14,8 @@
         
         public static void Main(string[] args)
         {
-            var files = Directory.GetFiles(@"c:\Temp\Captchas\Bests\", "*.jpg");
+            //var files = Directory.GetFiles(@"c:\Temp\Captchas\Bests\", "*.jpg");
+            var files = new[] { @"c:\Temp\Captchas\236GF.jpg" };
             foreach (var file in files)
             {
                 _currentFile = file;
@@ -67,7 +68,7 @@
             foreach (var contour in countours)
             {
                 var rect = Cv2.BoundingRect(contour);
-                decimal proportion = rect.Width / rect.Height;
+                decimal proportion = (decimal)rect.Width / (decimal)rect.Height;
                 if (proportion > 1.25m)
                 {
                     var halfWidth = rect.Width / 2;
@@ -90,10 +91,10 @@
         private static void SaveLetters(
             List<LetterLocation> positions, 
             string expected,
-            Bitmap bitmap)
+            Bitmap original)
         {
             var posExpected = positions.Zip(expected, (pos, letter) => new { Pos = pos, Letter = letter });
-            var mat = BitmapConverter.ToMat(bitmap);
+            var mat = BitmapConverter.ToMat(original);
 
             foreach (var posAndLetter in posExpected)
             {
@@ -102,16 +103,24 @@
 
                 // extraimos a letra do arquivo original adicionando uma margem de 2 px
                 var img = mat[pos.Y - 2, pos.Y + pos.H + 2, pos.X - 2, pos.X + pos.W + 2];
-                var imgBitmap = img.ToBitmap();
+                var resize = img.Resize(new OpenCvSharp.Size(20, 20));
+                var bitmap = resize.ToBitmap();
 
                 // salvamos a letra numa pasta especifica com as letras
-                var directory = Path.Combine(Path.GetDirectoryName(_currentFile), letter.ToString());
+                var directory = Path.Combine(Path.GetDirectoryName(_currentFile), "Data", letter.ToString());
                 if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
-                var filename = string.Format("{0:000000}.jpg", Directory.GetFiles(directory).Count() + 1);
+                var count = Directory.GetFiles(directory).Count() + 1;
+                var filename = $"{letter}_{count:000000}.jpg";
                 var path = Path.Combine(directory, filename);
-                imgBitmap.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
+                bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
             }
+        }
+
+        private static Mat ResizeToFit(Mat mat, int width, int height)
+        {
+            
+            return mat;
         }
 
         private static Bitmap GetLetter(Bitmap image, LetterLocation pos)
