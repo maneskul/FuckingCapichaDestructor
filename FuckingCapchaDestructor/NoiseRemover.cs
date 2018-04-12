@@ -23,7 +23,6 @@
         public Bitmap RemoveNoises()
         {
             while (
-                //this.RemoveNonBlacks() |
                 this.KeepClosetsTo(Color.Black, 33) |
                 this.PaintClosetsTo(Color.Black, Color.Black, 333) |
                 this.RemoveAloneGroups() |
@@ -222,36 +221,6 @@
             return anyChange;
         }
 
-        private bool RemoveTwoHorizontalSequentialPixelsAlone()
-        {
-            var anyChange = false;
-
-            var items = this.Pixos
-                .Where(d => !this.IsWhite(d))
-                .Select(d => new { Pixo = d, Siblings = d.GetSiblings() })
-                .Where(d => d.Siblings.Where(sibling => sibling.X == d.Pixo.X).All(this.IsWhite))
-                .Select(d => new
-                {
-                    Pixo = d.Pixo,
-                    NextPixo = d.Siblings.FirstOrDefault(sibling => this.NotWhite(sibling) && d.Pixo.X + 1 == sibling.X && d.Pixo.Y == sibling.Y),
-                })
-                .Where(d => d.NextPixo != null)
-                .Where(d => d.NextPixo.GetSiblings().Where(sibling => sibling.X == d.NextPixo.X).All(this.IsWhite));
-
-            foreach (var item in items)
-            {
-                anyChange = true;
-
-                item.Pixo.Color = Color.White;
-                this.OutputBitmap.SetPixel(item.Pixo.X, item.Pixo.Y, Color.White);
-
-                item.NextPixo.Color = Color.White;
-                this.OutputBitmap.SetPixel(item.NextPixo.X, item.NextPixo.Y, Color.White);
-            }
-
-            return anyChange;
-        }
-
         private bool RemoveTwoVerticalSequentialPixelsAlone()
         {
             var anyChange = false;
@@ -351,7 +320,7 @@
 
                 if (filter(item))
                 {
-                    foreach (var sibling in item.GetSiblings())
+                    foreach (var sibling in item.GetSiblings().Where(filter))
                         stack.Push(sibling);
 
                     yield return item;
