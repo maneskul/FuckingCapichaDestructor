@@ -12,10 +12,9 @@
     public class Program
     {
         public static string _currentFile { get; set; }
-        
-        const string inputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas";
-        const string outputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas_Output";
-        const string inputDirSearchPattern = "00VQ3.jpg";
+        const string inputDir = @"c:\Temp\Captchas\";
+        const string outputDir = @"c:\Temp\Captchas\Output";
+        const string inputDirSearchPattern = "*.jpg";
 
         static Program()
         {
@@ -24,8 +23,7 @@
 
         public static void Main(string[] args)
         {
-            //var files = Directory.GetFiles(@"c:\Temp\Captchas\Bests\", "*.jpg");
-            var files = new[] { @"c:\Temp\Captchas\236GF.jpg" };
+            var files = Directory.GetFiles(inputDir, inputDirSearchPattern);
             foreach (var file in files)
             {
                 _currentFile = file;
@@ -33,9 +31,8 @@
 
                 try
                 {
-                    Resolve(_currentFile);
+                    RemoveNoises(_currentFile);
                     Console.WriteLine($"=> Arquivo {fileName} - OK");
-
                 }
                 catch
                 {
@@ -52,9 +49,8 @@
                 {
                     bitmap.Dispose();
 
-                    var filename = string.Concat(Path.GetFileNameWithoutExtension(filePath), "_result", Path.GetExtension(filePath));
-                    var path = Path.Combine(Path.GetDirectoryName(filePath), filename);
-                    captchaWithoutNoises.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    var path = Path.Combine(outputDir, Path.GetFileName(filePath));
+                    captchaWithoutNoises.Save(path, ImageFormat.Jpeg);
 
                     var positions = GetEachLetter(captchaWithoutNoises);
                     var expected = Path.GetFileNameWithoutExtension(_currentFile);
@@ -125,12 +121,6 @@
                 var path = Path.Combine(directory, filename);
                 bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
             }
-        }
-
-        private static Mat ResizeToFit(Mat mat, int width, int height)
-        {
-            
-            return mat;
         }
 
         private static Bitmap GetLetter(Bitmap image, LetterLocation pos)
