@@ -25,14 +25,37 @@
             while (
                 //this.RemoveNonBlacks() |
                 this.KeepClosetsTo(Color.Black, 33) |
-                this.PaintClosetsTo(Color.Black, Color.Black, 33) |
+                this.PaintClosetsTo(Color.Black, Color.Black, 333) |
                 this.RemoveAloneGroups() |
-                this.RemoveWeakLines() /*|
-                this.RemoveWeakPixosInDiagonal() */|
-                this.RemoveTwoHorizontalSequentialPixelsAlone() |
-                this.RemoveTwoVerticalSequentialPixelsAlone()) ;
+                this.RemoveWeakLines() |
+                this.RemoveWeakPixosInDiagonal() | 
+                //this.RemoveTwoHorizontalSequentialPixelsAlone() |
+                this.RemoveTwoVerticalSequentialPixelsAlone() |
+                this.RemoveAloneLines()) ;
 
             return this.OutputBitmap;
+        }
+
+        private void Paint(Pixo pixo, Color color)
+        {
+            pixo.Color = color;
+            this.OutputBitmap.SetPixel(pixo.X, pixo.Y, color);
+        }
+
+        private void BlackAndWhite(Bitmap image)
+        {
+            // for every pixel in the rectangle region
+            for (Int32 xx = 0; xx < image.Width; xx++)
+            {
+                for (Int32 yy = 0; yy < image.Height; yy++)
+                {
+                    // average the red, green and blue of the pixel to get a gray value
+                    Color pixel = image.GetPixel(xx, yy);
+                    Int32 avg = (pixel.R + pixel.G + pixel.B) / 3;
+
+                    image.SetPixel(xx, yy, Color.FromArgb(0, avg, avg, avg));
+                }
+            }
         }
 
         private bool RemoveNonBlacks()
@@ -112,6 +135,39 @@
             }
 
             foreach (var pixo in this.Pixos) pixo.MarkAsUnread();
+
+            return anyChange;
+        }
+
+        private bool RemoveAloneLines()
+        {
+            var anyChange = false;
+
+            var items = this.Pixos
+                .Where(d => d.Color.ToArgb() == Color.Black.ToArgb() && d.GetSiblings(Directions.Top | Directions.Bottom).All(e => e.Color.ToArgb() == Color.White.ToArgb()))
+                .GroupBy(
+                    d => d.Y,
+                    (y, pixos) =>
+                    {
+                        var lineIndex = 0;
+                        var lastX = pixos.First();
+                        return pixos.GroupBy(pixo =>
+                        {
+                            lineIndex = pixo.X - lastX.X > 1 ? lineIndex + 1 : lineIndex;
+                            lastX = pixo;
+                            return lineIndex;
+                        }, (key, sequentialPixos) => new { Y = y, LineIndex = key, Pixos = sequentialPixos });
+                    })
+                .SelectMany(groups => groups)
+                .Where(d => d.Pixos.Count() > 3);
+
+
+            foreach (var item in items)
+            {
+                anyChange = true;
+                foreach (var pixo in item.Pixos)
+                    Paint(pixo, Color.White);
+            }
 
             return anyChange;
         }
@@ -307,12 +363,17 @@
 
         public IEnumerable<Pixo> GetSiblings()
         {
-            return this.GetSiblingsCoordinates().Select(d => this.Pixos[d.X, d.Y]);
+            return this.GetSiblings(Directions.All);
+        }
+
+        public IEnumerable<Pixo> GetSiblings(Directions directions)
+        {
+            return this.GetSiblingsCoordinates(directions).Select(d => this.Pixos[d.X, d.Y]);
         }
 
         public IEnumerable<Pixo> GetSiblings(Func<Pixo, bool> filter)
         {
-            return this.GetSiblingsCoordinates().Select(d => this.Pixos[d.X, d.Y]).Where(filter);
+            return this.GetSiblingsCoordinates(Directions.All).Select(d => this.Pixos[d.X, d.Y]).Where(filter);
         }
 
         public bool IsDiagonal(Pixo pixo)
@@ -343,25 +404,31 @@
                     pixo != diagonalPixo);
         }
 
-        private IEnumerable<Point> GetSiblingsCoordinates()
+        private IEnumerable<Point> GetSiblingsCoordinates(Directions sides)
         {
-            return new[] {
-                new Point(this.X - 1, this.Y - 1),
-                new Point(this.X + 0, this.Y - 1),
-                new Point(this.X + 1, this.Y - 1),
+            var canGrowX = this.X + 1 < this.Bitmap.Width;
+            var canGrowY = this.Y + 1 < this.Bitmap.Height;
 
-                new Point(this.X - 1, this.Y + 0),
-                new Point(this.X + 1, this.Y + 0),
+            if (this.Y > 0)
+            {
+                var y = this.Y - 1;
 
-                new Point(this.X - 1, this.Y + 1),
-                new Point(this.X + 0, this.Y + 1),
-                new Point(this.X + 1, this.Y + 1),
+                if (sides.HasFlag(Directions.TopLeft) && this.X > 0) yield return new Point(this.X - 1, y);
+                if (sides.HasFlag(Directions.Top)) yield return new Point(this.X, y);
+                if (sides.HasFlag(Directions.TopRight) && canGrowX) yield return new Point(this.X + 1, y);
             }
-            .Where(d =>
-                d.X >= 0 &&
-                d.Y >= 0 &&
-                d.X < this.Bitmap.Width &&
-                d.Y < this.Bitmap.Height);
+
+            if (sides.HasFlag(Directions.Left) && this.X > 0) yield return new Point(this.X - 1, this.Y);
+            if (sides.HasFlag(Directions.Right) && canGrowX) yield return new Point(this.X + 1, this.Y);
+
+            if (canGrowY)
+            {
+                var y = this.Y + 1;
+
+                if (sides.HasFlag(Directions.BottomLeft) && this.X > 0) yield return new Point(this.X - 1, y);
+                if (sides.HasFlag(Directions.Bottom)) yield return new Point(this.X, y);
+                if (sides.HasFlag(Directions.BottomRight) && canGrowX) yield return new Point(this.X + 1, y);
+            }
         }
 
         public Pixo Read()
@@ -375,5 +442,20 @@
             this.Readed = false;
             return this;
         }
+    }
+
+    public enum Directions
+    {
+        Top = 2 << 0,
+        Right = 2 << 1,
+        Bottom = 2 << 2,
+        Left = 2 << 3,
+        TopRight = 2 << 4,
+        BottomRight = 2 << 5,
+        BottomLeft = 2 << 6,
+        TopLeft = 2 << 7,
+        All = Directions.TopLeft | Directions.Top | Directions.TopRight |
+              Directions.BottomLeft | Directions.BottomRight | Directions.Bottom |
+              Directions.Right | Directions.Left
     }
 }

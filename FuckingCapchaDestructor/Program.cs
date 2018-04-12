@@ -2,29 +2,39 @@
 {
     using System;
     using System.Drawing;
+    using System.Drawing.Imaging;
     using System.IO;
-    using System.Threading;
+    using System.Linq;
 
     public class Program
     {
-        public static void Main(string[] args)
-        {
-            foreach (var filePath in args)
-                Console.WriteLine(File.Exists(filePath) ? $"{filePath} => {Resolve(filePath)}" : $"The file {filePath} does not exists");
+        const string inputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas";
+        const string outputDir = @"C:\Users\Desenvolvedor\Downloads\Captchas_Output";
+        const string inputDirSearchPattern = "*.jpg";
 
-            Thread.Sleep(TimeSpan.FromSeconds(10));
+        static Program()
+        {
+            if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
         }
 
-        private static string Resolve(string filePath)
+        public static void Main(string[] args)
+        {
+            Directory
+                .GetFiles(inputDir, inputDirSearchPattern)
+                .AsParallel()
+                .ForAll(path => Console.Write($"{path} >> {RemoveNoises(path)}"));
+
+            Console.WriteLine("Finished");
+        }
+
+        private static string RemoveNoises(string filePath)
         {
             using (var bitmap = new Bitmap(filePath))
             using (var captchaWithoutNoises = new NoiseRemover(bitmap).RemoveNoises())
             {
-                bitmap.Dispose();
+                var path = Path.Combine(outputDir, Path.GetFileName(filePath));
 
-                var filename = string.Concat(Path.GetFileNameWithoutExtension(filePath), "_result", Path.GetExtension(filePath));
-                var path = Path.Combine(Path.GetDirectoryName(filePath), filename);
-                captchaWithoutNoises.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
+                captchaWithoutNoises.Save(path, ImageFormat.Jpeg);
 
                 return new ImageToText(captchaWithoutNoises).Resolve();
             }
